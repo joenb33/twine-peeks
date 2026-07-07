@@ -2,7 +2,7 @@
 
 ## 1.7.0 — 2026-07-07
 
-**Project renamed to Twine Peeks** (formerly "Twine DevTools").
+**Project renamed to Twine Peeks** (formerly "Twine DevTools"), with a new original logo — earlier private builds used placeholder icons borrowed from TwineHacker (see [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)).
 
 ### Inspect mode overhaul
 - The panel now hides while inspecting, with a floating HUD pill — the full game is visible

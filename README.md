@@ -167,6 +167,8 @@ node --check extension/injected/page-api.js
 cp extension/content/overlay.js /tmp/overlay.mjs && node --check /tmp/overlay.mjs
 ```
 
+Every push runs CI (syntax checks, manifest validation, `web-ext lint`, `.xpi` packaging). Version tags get the `.xpi` attached to the GitHub Release automatically — see [docs/RELEASING.md](docs/RELEASING.md), including how to sign for Firefox via AMO.
+
 ### Project structure
 
 ```
@@ -178,9 +180,10 @@ extension/
 ├── lib/                   # shared helpers (console snippets)
 ├── popup.html/js          # toolbar popup
 └── options.html/js        # DevTools panel options
-scripts/                   # Firefox .xpi packaging
+scripts/                   # Firefox .xpi packaging (local)
 tests/                     # browser test harnesses
-docs/                      # screenshots
+docs/                      # screenshots + releasing/signing guide
+.github/workflows/         # CI: checks, packaging, releases, AMO signing
 ```
 
 ## 🤝 Contributing
@@ -199,9 +202,7 @@ Twine Peeks is a development and learning tool. Variable editing, save decoding,
 
 ## 🙏 Acknowledgements
 
-- [TwineHacker](https://github.com/La-Li-Lu-Le-Lo/TwineHacker) and [Twine Dugger](https://github.com/Goctionni/twine-dugger) for pioneering Twine state inspection ideas
-- [hituro's CHATSYSTEM macros](https://github.com/hituro/hituro-makes-macros) — supported by the Chat tab
-- The [Twine](https://twinery.org/) and [SugarCube](https://www.motoslave.net/sugarcube/2/) communities
+Twine Peeks learned from and adapts ideas from earlier open Twine tooling — notably [Twine Dugger](https://github.com/Goctionni/twine-dugger) (MIT) and [TwineHacker](https://github.com/La-Li-Lu-Le-Lo/TwineHacker), and supports games built with [hituro's CHATSYSTEM macros](https://github.com/hituro/hituro-makes-macros). See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) for full credits and license notices.
 
 ## 📄 License
 

@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: "Sign the .xpi on AMO (requires AMO_JWT_ISSUER / AMO_JWT_SECRET secrets)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    name: Syntax & manifest checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax-check all extension JavaScript
+        # node --check only parses module syntax for .mjs files, so every file
+        # is checked via a temporary .mjs copy (all sources are strict-mode safe).
+        run: |
+          set -e
+          find extension -name '*.js' | while read -r f; do
+            cp "$f" /tmp/check.mjs
+            node --check /tmp/check.mjs || { echo "FAILED: $f"; exit 1; }
+            echo "OK: $f"
+          done
+      - name: Validate manifest.json
+        run: node -e "JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8')); console.log('manifest OK')"
+
+  webext-lint:
+    name: web-ext lint (AMO readiness, informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes web-ext lint --source-dir extension
+
+  package:
+    name: Package .xpi
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build .xpi (zip of extension/ with manifest at root)
+        run: |
+          VERSION=$(node -p "require('./extension/manifest.json').version")
+          mkdir -p dist
+          (cd extension && zip -r "../dist/twine-peeks-$VERSION-firefox.xpi" .)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: twine-peeks-${{ env.VERSION }}-firefox
+          path: dist/*.xpi
+      - name: Attach .xpi to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.xpi
+
+  # Optional AMO signing — run manually from the Actions tab once the
+  # AMO_JWT_ISSUER and AMO_JWT_SECRET repository secrets are configured.
+  # See docs/RELEASING.md for how to obtain API credentials.
+  sign:
+    name: Sign on AMO (manual)
+    needs: check
+    if: github.event_name == 'workflow_dispatch' && inputs.sign
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sign with web-ext (unlisted channel)
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then
+            echo "::error::AMO_JWT_ISSUER / AMO_JWT_SECRET secrets are not configured (see docs/RELEASING.md)"
+            exit 1
+          fi
+          npx --yes web-ext sign \
+            --source-dir extension \
+            --artifacts-dir dist \
+            --channel unlisted \
+            --api-key "$AMO_JWT_ISSUER" \
+            --api-secret "$AMO_JWT_SECRET"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: twine-peeks-signed
+          path: dist/*.xpi
