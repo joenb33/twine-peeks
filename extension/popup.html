@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Twine Peeks</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 12px 14px;
+      font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+      background: #1e1e1e;
+      color: #ccc;
+      min-width: 220px;
+    }
+    h1 { font-size: 14px; margin: 0 0 8px; font-weight: 600; }
+    p { margin: 0 0 10px; font-size: 12px; color: #858585; }
+    button {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0e639c;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+    }
+    button:hover { background: #3794ff; }
+    .err { color: #f48771; font-size: 12px; margin-top: 8px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>Twine Peeks</h1>
+  <p>Open the toolkit on this tab. If it fails, reload the game page (F5) first.</p>
+  <p style="font-size:11px;color:#666">Local HTML files: in Firefox enable <em>Allow access to file URLs</em> under about:addons → Twine Peeks.</p>
+  <button type="button" id="open">Open toolkit</button>
+  <p class="err" id="err">Could not reach this page — reload the game tab first.</p>
+  <script src="popup.js"></script>
+</body>
+</html>

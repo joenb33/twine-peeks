@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Twine Peeks</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <header class="header">
+    <h1 class="title" id="page-title">Twine Peeks</h1>
+    <p class="subtitle" id="engine-badge">Scanning for SugarCube…</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab active" data-tab="variables" role="tab">Variables</button>
+    <button type="button" class="tab" data-tab="game" role="tab">Game</button>
+    <button type="button" class="tab" data-tab="setup" role="tab">Setup</button>
+    <button type="button" class="tab" data-tab="json" role="tab">JSON</button>
+  </nav>
+
+  <section id="panel-variables" class="panel active" role="tabpanel">
+    <div class="toolbar">
+      <label class="toolbar-item">
+        Filter
+        <input type="search" id="var-filter" placeholder="variable name…"/>
+      </label>
+      <button type="button" id="var-clear-filter" class="btn-icon" title="Clear filter">×</button>
+      <label class="toolbar-item">
+        Highlight
+        <input type="search" id="var-highlight" placeholder="name or value…"/>
+      </label>
+      <button type="button" id="var-clear-highlight" class="btn-icon" title="Clear highlight">×</button>
+      <label class="toolbar-item checkbox">
+        <input type="checkbox" id="var-auto-refresh"/>
+        Auto-refresh
+      </label>
+      <label class="toolbar-item">
+        Interval
+        <input type="number" id="var-interval" min="100" max="10000" step="100" value="500" class="input-sm"/>
+        ms
+      </label>
+      <button type="button" id="var-collapse-all" class="btn">Collapse</button>
+      <button type="button" id="var-expand-all" class="btn">Expand</button>
+    </div>
+    <div id="variables-content" class="scroll-area">
+      <p class="placeholder">Open a Twine / SugarCube game, then switch to this tab.</p>
+    </div>
+  </section>
+
+  <section id="panel-game" class="panel" role="tabpanel" hidden>
+    <div class="toolbar">
+      <button type="button" id="refresh-game" class="btn primary">Refresh</button>
+      <span id="game-status" class="status status-info"></span>
+    </div>
+    <div class="game-layout scroll-area">
+      <div class="game-section">
+        <h2>Current state</h2>
+        <div id="game-meta"></div>
+      </div>
+      <div class="game-section">
+        <h2>Go to passage</h2>
+        <div class="inline-form">
+          <input type="text" id="goto-passage" placeholder="Passage name"/>
+          <button type="button" id="goto-btn" class="btn primary">Go</button>
+        </div>
+        <label for="passage-filter">Passages</label>
+        <input type="search" id="passage-filter" placeholder="Filter passages…"/>
+        <ul id="passage-list" class="passage-list"></ul>
+      </div>
+      <div class="game-section">
+        <h2>History</h2>
+        <ul id="history-list" class="history-list"></ul>
+      </div>
+      <div class="game-section full-width">
+        <h2>Quick eval</h2>
+        <p class="hint">Evaluate JavaScript in the game page context. Ctrl+Enter to run.</p>
+        <div id="console-snippets" class="snippet-bar"></div>
+        <textarea id="quick-console" rows="3" placeholder="SugarCube.State.passage"></textarea>
+        <button type="button" id="console-run" class="btn">Run</button>
+        <pre id="console-output" class="console-output"></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="panel-setup" class="panel" role="tabpanel" hidden>
+    <div class="toolbar">
+      <button type="button" id="refresh-setup" class="btn primary">Refresh</button>
+      <label class="toolbar-item">
+        Filter
+        <input type="search" id="setup-filter" placeholder="setup key…"/>
+      </label>
+      <span id="setup-status" class="status status-info"></span>
+    </div>
+    <div id="setup-content" class="scroll-area"></div>
+  </section>
+
+  <section id="panel-json" class="panel" role="tabpanel" hidden>
+    <div class="toolbar">
+      <button type="button" id="json-refresh" class="btn primary">Export</button>
+      <button type="button" id="json-copy" class="btn">Copy</button>
+      <button type="button" id="json-apply" class="btn danger">Merge apply</button>
+      <span id="json-status" class="status status-info"></span>
+    </div>
+    <p class="hint">Edit JSON and use <strong>Merge apply</strong> to shallow-merge into live variables. Use with care.</p>
+    <textarea id="json-editor" class="json-editor scroll-area" spellcheck="false"></textarea>
+  </section>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+{
+  "name": "Twine Peeks",
+  "version": "1.7.0",
+  "description": "Peek inside any Twine game — inspect, visualize, and edit SugarCube, Harlowe, Chapbook, and Snowman stories while they run.",
+  "manifest_version": 3,
+  "permissions": ["storage", "scripting", "tabs"],
+  "host_permissions": [
+    "file://*/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_title": "Twine Peeks",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["file://*/*", "http://*/*", "https://*/*"],
+      "js": ["content/bootstrap.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "injected/adapters.js",
+        "injected/state-utils.js",
+        "injected/page-api.js",
+        "content/overlay.css",
+        "content/content.js",
+        "content/bridge.js",
+        "content/overlay.js",
+        "content/graph-viz.js",
+        "content/inspect-mode.js",
+        "content/watch-storage.js",
+        "content/lock-storage.js",
+        "content/iframe-bridge.js",
+        "lib/console-snippets.js"
+      ],
+      "matches": ["file://*/*", "http://*/*", "https://*/*"]
+    }
+  ],
+  "devtools_page": "devtools.html",
+  "options_page": "options.html",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "twine-devtools@addon.local",
+      "strict_min_version": "109.0"
+    }
+  }
+}

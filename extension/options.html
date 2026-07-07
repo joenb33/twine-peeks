@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Twine Peeks — Options</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 560px; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin: 1rem 0 0.25rem; font-weight: 600; }
+    input[type="number"] { width: 6rem; }
+    p.hint { color: #666; font-size: 0.9rem; margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Twine Peeks</h1>
+  <p>Options apply to the DevTools panel (F12 → Twine Peeks tab).</p>
+
+  <label>
+    <input type="checkbox" id="autoRefresh"/>
+    Auto-refresh variables
+  </label>
+  <p class="hint">Poll the game for variable changes while the panel is open.</p>
+
+  <label for="refreshInterval">Refresh interval (ms)</label>
+  <input type="number" id="refreshInterval" min="100" max="10000" step="100" value="500"/>
+  <p class="hint">Increase if a game feels sluggish with the panel open.</p>
+
+  <script src="options.js"></script>
+</body>
+</html>

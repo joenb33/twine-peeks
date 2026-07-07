@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Overlay integration test</title>
+  <meta name="twine-story-format" content="SugarCube"/>
+  <meta name="twine-story-format-version" content="2.36.1"/>
+</head>
+<body>
+<tw-storydata name="OverlayTest" startnode="1" ifid="TEST-IFID" hidden>
+  <tw-passagedata pid="1" name="Start" tags="">Go [[North]] or [[South]] &lt;&lt;set $gold to 5&gt;&gt;</tw-passagedata>
+  <tw-passagedata pid="2" name="North" tags="location">Back to [[Start]]</tw-passagedata>
+  <tw-passagedata pid="3" name="South" tags="">Also [[Start]]</tw-passagedata>
+</tw-storydata>
+<div id="passages"><div class="passage">
+  <a class="link-internal" data-passage="North">North</a>
+  <a class="link-internal" data-passage="South">South</a>
+</div></div>
+
+<script>
+  window.SugarCube = {
+    State: {
+      active: { variables: null },
+      variables: null,
+      temporary: {},
+      history: [{ title: "Start", variables: {} }],
+      activeIndex: 0,
+      passage: "Start",
+      turns: 1,
+    },
+    Engine: { goTo: function () {}, play: function (n) { window.__played = n; } },
+    setup: {},
+    version: { title: "SugarCube 2.36.1" },
+  };
+  var vars = { gold: 5, player: { name: "Ann", hp: 10 } };
+  window.SugarCube.State.active.variables = vars;
+  window.SugarCube.State.variables = vars;
+
+  // Extension API stub — enough for overlay.js and its imports.
+  window.chrome = {
+    runtime: { getURL: function (p) { return "/extension/" + p; } },
+    storage: {
+      local: {
+        _data: {},
+        get: function (def, cb) {
+          var out = {};
+          Object.keys(def).forEach(function (k) {
+            out[k] = Object.prototype.hasOwnProperty.call(this._data, k) ? this._data[k] : def[k];
+          }, this);
+          cb(out);
+        },
+        set: function (v, cb) {
+          Object.assign(this._data, v);
+          if (cb) cb();
+        },
+      },
+    },
+  };
+</script>
+<script src="../extension/injected/adapters.js"></script>
+<script src="../extension/injected/state-utils.js"></script>
+<script src="../extension/injected/page-api.js"></script>
+<script type="module">
+  import { initBridge } from "../extension/content/bridge.js";
+  import { TwineToolkitOverlay } from "../extension/content/overlay.js";
+
+  initBridge(() => {});
+  const overlay = new TwineToolkitOverlay(() => { window.__closed = true; });
+  window.__overlay = overlay;
+  window.__ready = true;
+</script>
+</body>
+</html>

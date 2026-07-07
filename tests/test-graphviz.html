@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"/><title>Graph viz test</title></head>
+<body>
+<div id="host-small" style="width:800px"></div>
+<div id="host-large" style="width:800px"></div>
+<script type="module">
+  import { renderStoryGraph } from "../extension/content/graph-viz.js";
+
+  // Small neighborhood graph (per-line edges, arrows, labels).
+  const smallNodes = [
+    { id: "Start", tags: [], primaryCategory: "other", degree: 2 },
+    { id: "North", tags: ["location"], primaryCategory: "navigation", isLocationHub: true, degree: 2 },
+    { id: "South", tags: [], primaryCategory: "other", degree: 1 },
+  ];
+  const smallEdges = [
+    { from: "Start", to: "North", type: "static", label: "n" },
+    { from: "Start", to: "South", type: "static", label: "s" },
+    { from: "North", to: "Start", type: "tag-goto", label: "back" },
+  ];
+  const smallRes = renderStoryGraph(document.getElementById("host-small"), { nodes: smallNodes, edges: smallEdges }, {
+    center: "Start",
+    onNodeClick: (n) => { window.__clicked = n; },
+  });
+
+  // Large graph: tree of 1500 nodes → batched paths, hub labels, radial layout.
+  const nodes = [];
+  const edges = [];
+  for (let i = 0; i < 1500; i++) {
+    nodes.push({ id: "P" + i, tags: [], primaryCategory: i % 7 === 0 ? "navigation" : "other" });
+  }
+  for (let i = 1; i < 1500; i++) {
+    edges.push({ from: "P" + Math.floor(i / 3), to: "P" + i, type: "static", label: "L" });
+  }
+  // A few disconnected nodes.
+  for (let i = 0; i < 12; i++) nodes.push({ id: "Iso" + i, tags: [], primaryCategory: "other" });
+
+  const t0 = performance.now();
+  const largeRes = renderStoryGraph(document.getElementById("host-large"), { nodes, edges, startPassage: "P0" }, {
+    highlightQuery: "P42",
+  });
+  const renderMs = performance.now() - t0;
+
+  const largeSvg = document.querySelectorAll("#host-large svg path").length;
+  window.__gv = {
+    smallHasCleanup: typeof smallRes.cleanup === "function",
+    smallCircles: document.querySelectorAll("#host-small svg circle").length,
+    smallLines: document.querySelectorAll("#host-small svg line").length,
+    largeMatchCount: largeRes.matchCount,
+    largeBatchedPaths: largeSvg,
+    largeLines: document.querySelectorAll("#host-large svg line").length,
+    largeCircles: document.querySelectorAll("#host-large svg circle").length,
+    largeLabels: document.querySelectorAll("#host-large svg text").length,
+    renderMs: Math.round(renderMs),
+  };
+  largeRes.cleanup();
+  smallRes.cleanup();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Local reference clones of other projects — not part of this repo
+_reference/
+_samples/
+
+# Build artifacts (rebuild with scripts/package-firefox.ps1)
+dist/
+
+# Test/tooling output
+.playwright-mcp/
+.claude/
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store

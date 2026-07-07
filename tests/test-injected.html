@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Injected API test</title>
+  <meta name="twine-story-format" content="SugarCube"/>
+  <meta name="twine-story-format-version" content="2.36.1"/>
+</head>
+<body>
+<tw-storydata name="TestStory" startnode="1" ifid="TEST-IFID" hidden>
+  <tw-passagedata pid="1" name="Start" tags="">Go [[North]] or [[South]] &lt;&lt;set $gold to 5&gt;&gt; &lt;&lt;if $gold gt 3&gt;&gt;rich&lt;&lt;/if&gt;&gt;</tw-passagedata>
+  <tw-passagedata pid="2" name="North" tags="location">A location hub. Back to [[Start]]</tw-passagedata>
+  <tw-passagedata pid="3" name="South" tags="widget">&lt;&lt;widget "myWidget"&gt;&gt;w&lt;&lt;/widget&gt;&gt; Leads to [[Missing Passage]]</tw-passagedata>
+  <tw-passagedata pid="4" name="Orphan" tags="">Nobody links here. Dead end too.</tw-passagedata>
+</tw-storydata>
+
+<div id="passages"><div class="passage">
+  <a class="link-internal" data-passage="North">North</a>
+  <a class="link-internal" data-passage="South">South</a>
+  <a class="link-internal" data-passage="North">Another North label</a>
+  <span class="link-internal" data-passage="South">Span link A</span>
+  <span class="link-internal" data-passage="North">Span link B</span>
+  <a class="link-internal" data-setter="$gold += 1">Setter action</a>
+</div></div>
+
+<script>
+  // Minimal SugarCube 2 stand-in with the surfaces the tool touches.
+  window.SugarCube = {
+    State: {
+      active: { variables: null },
+      variables: null,
+      temporary: { curr: 1 },
+      history: [
+        { title: "Start", variables: {} },
+        { title: "North", variables: {} },
+      ],
+      activeIndex: 1,
+      passage: "North",
+      turns: 2,
+    },
+    Engine: {
+      goTo: function (i) { window.__wentTo = i; },
+      play: function (n) { window.__played = n; },
+    },
+    setup: {
+      peopleList: { alice: { name: "Alice", friendship: 3, trust: 1 } },
+      helperFn: function () {},
+    },
+    Config: { saves: { maxSlotSaves: 8 } },
+    version: { title: "SugarCube 2.36.1" },
+  };
+  var vars = { gold: 5, name: "Ann", inv: ["sword", "rope"], flags: { metAlice: false, doorLocked: true } };
+  window.SugarCube.State.active.variables = vars;
+  window.SugarCube.State.variables = vars;
+
+  // Custom tech the scanner should find.
+  window.CustomGameSystem = { version: "9.9", things: [1, 2, 3] };
+  class PersonHelper { greet() { return "hi"; } }
+  window.PersonHelper = PersonHelper;
+</script>
+<script src="../extension/injected/adapters.js"></script>
+<script src="../extension/injected/state-utils.js"></script>
+<script src="../extension/injected/page-api.js"></script>
+<script>
+  var pending = {};
+  var seq = 0;
+  window.addEventListener("message", function (ev) {
+    var d = ev.data;
+    if (!d || d.source !== "twine-devtools-response") return;
+    var cb = pending[d.id];
+    if (cb) { delete pending[d.id]; cb(d); }
+  });
+  window.callPage = function (method, args) {
+    return new Promise(function (resolve) {
+      var id = "t" + (++seq);
+      pending[id] = function (d) {
+        resolve(d.error ? { __error: d.error } : d.result);
+      };
+      window.postMessage({ source: "twine-devtools-request", id: id, method: method, args: args || {} }, "*");
+    });
+  };
+  window.runTests = async function () {
+    var out = {};
+    out.ping = await callPage("ping");
+    out.detectLite = await callPage("detectLite");
+    out.meta = await callPage("getMeta");
+    out.passageList = await callPage("getPassageList");
+    out.graph = await callPage("getStoryGraph", {});
+    out.visual = await callPage("getGraphForVisual", { center: "Start", depth: 2 });
+    out.domLinks = await callPage("getCurrentDomLinks");
+    out.tech = await callPage("getFormatTech");
+    out.history = await callPage("getHistory");
+    out.restore = await callPage("restoreHistory", { index: 0 });
+    out.wentTo = window.__wentTo;
+    out.analysis = await callPage("getStoryAnalysis");
+    out.search = await callPage("globalSearch", { query: "gold" });
+    out.variables = await callPage("getVariables");
+    out.setVar = await callPage("setVariable", { path: ["gold"], value: "42", type: "number" });
+    out.goldAfter = vars.gold;
+    out.passageDetail = await callPage("getPassageDetail", { name: "South" });
+    return out;
+  };
+</script>
+</body>
+</html>
