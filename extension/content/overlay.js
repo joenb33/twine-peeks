@@ -7,6 +7,18 @@ import { loadWatchList, addWatch, removeWatch } from "./watch-storage.js";
 import { loadLockedPaths, setPathLocked } from "./lock-storage.js";
 import { mountSnippetBar } from "../lib/console-snippets.js";
 
+const FEEDBACK_REPO = "joenb33/twine-peeks";
+const UPDATE_CHECK_KEY = "twine-devtools-update-check";
+const SNAPSHOTS_KEY = "twine-devtools-snapshots";
+const MAX_SNAPSHOTS_PER_STORY = 5;
+const MAX_SNAPSHOT_BYTES = 1_000_000;
+
+function getRuntime() {
+  if (typeof chrome !== "undefined") return chrome;
+  if (typeof browser !== "undefined") return browser;
+  return null;
+}
+
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "variables", label: "Variables" },
@@ -99,7 +111,18 @@ export class TwineToolkitOverlay {
     this.titleEl = el("span", "panel-title");
     this.titleEl.textContent = "Twine Peeks";
     this.badgeEl = el("span", "panel-badge");
+    this.updateEl = document.createElement("a");
+    this.updateEl.className = "update-link";
+    this.updateEl.href = `https://github.com/${FEEDBACK_REPO}/releases`;
+    this.updateEl.target = "_blank";
+    this.updateEl.rel = "noopener";
+    this.updateEl.title = "A newer version is available — open the releases page";
+    this.updateEl.hidden = true;
     const actions = el("div", "panel-actions");
+    const feedbackBtn = el("button", "icon-btn");
+    feedbackBtn.textContent = "💬";
+    feedbackBtn.title = "Send feedback / report a problem";
+    feedbackBtn.addEventListener("click", () => this.showFeedbackDialog());
     const refreshBtn = el("button", "icon-btn");
     refreshBtn.textContent = "↻";
     refreshBtn.title = "Refresh";
@@ -108,8 +131,8 @@ export class TwineToolkitOverlay {
     closeBtn.textContent = "×";
     closeBtn.title = "Close";
     closeBtn.addEventListener("click", () => this.hide());
-    actions.append(refreshBtn, closeBtn);
-    header.append(this.titleEl, this.badgeEl, actions);
+    actions.append(feedbackBtn, refreshBtn, closeBtn);
+    header.append(this.titleEl, this.badgeEl, this.updateEl, actions);
     this.makePanelDraggable(header);
 
     const tabsWrap = el("div", "tabs-wrap");
@@ -168,8 +191,36 @@ export class TwineToolkitOverlay {
       <button type="button" class="btn btn-xs" id="hud-cancel" title="Esc also cancels">Cancel</button>`;
     this.inspectHud.querySelector("#hud-cancel").addEventListener("click", () => this.stopInspectMode());
 
+    this.feedbackModal = el("div", "feedback-modal");
+    this.feedbackModal.hidden = true;
+    this.feedbackModal.innerHTML = `
+      <div class="feedback-card">
+        <h3>Send feedback</h3>
+        <p class="hint">Opens a prefilled GitHub issue in a new tab — you review and edit everything before it is submitted. Requires a GitHub account.</p>
+        <div class="feedback-kind">
+          <label><input type="radio" name="fb-kind" value="bug" checked/> 🐛 Bug / problem</label>
+          <label><input type="radio" name="fb-kind" value="idea"/> 💡 Idea / suggestion</label>
+        </div>
+        <textarea id="fb-desc" rows="5" placeholder="What happened, or what would you like to see?"></textarea>
+        <label><input type="checkbox" id="fb-diag" checked/> Include diagnostics (version, browser, detected engine)</label>
+        <label><input type="checkbox" id="fb-url"/> Include page URL <span class="hint">(off by default — the game you play stays private)</span></label>
+        <pre class="console-out" id="fb-preview"></pre>
+        <p class="sandbox-actions">
+          <button type="button" class="btn primary" id="fb-open">Open GitHub issue</button>
+          <button type="button" class="btn" id="fb-cancel">Cancel</button>
+        </p>
+      </div>`;
+    this.feedbackModal.addEventListener("click", (e) => {
+      if (e.target === this.feedbackModal) this.hideFeedbackDialog();
+    });
+    this.feedbackModal.querySelector("#fb-cancel").addEventListener("click", () => this.hideFeedbackDialog());
+    this.feedbackModal.querySelector("#fb-open").addEventListener("click", () => this.openFeedbackIssue());
+    this.feedbackModal.querySelector("#fb-diag").addEventListener("change", () => this.updateFeedbackPreview());
+    this.feedbackModal.querySelector("#fb-url").addEventListener("change", () => this.updateFeedbackPreview());
+
     this.backdrop.appendChild(this.panel);
     this.backdrop.appendChild(this.inspectHud);
+    this.backdrop.appendChild(this.feedbackModal);
     this.shadow.appendChild(this.backdrop);
 
     this.backdrop.addEventListener("click", (e) => {
@@ -186,6 +237,10 @@ export class TwineToolkitOverlay {
       e.stopPropagation();
       if (e.type === "keydown" && e.key === "Escape") {
         e.preventDefault();
+        if (this.feedbackModal && !this.feedbackModal.hidden) {
+          this.hideFeedbackDialog();
+          return;
+        }
         this.hide();
       }
     };
@@ -534,13 +589,17 @@ export class TwineToolkitOverlay {
         <button type="button" class="btn primary" id="json-export">Export</button>
         <button type="button" class="btn" id="json-copy">Copy</button>
         <button type="button" class="btn danger" id="json-merge">Merge apply</button>
+        <button type="button" class="btn" id="json-snap" title="Save the current variables inside the extension">📸 Snapshot</button>
       </div>
+      <p class="hint toolbar-hint">Snapshots keep up to ${MAX_SNAPSHOTS_PER_STORY} variable states per story inside the extension — restore one to A/B-test branching paths. Restore merges values (use a test save).</p>
+      <div id="json-snaps" class="snap-list"></div>
       <div class="tab-body json-body">
         <textarea class="json-area" id="json-editor" spellcheck="false"></textarea>
       </div>`;
     panel.querySelector("#json-export").addEventListener("click", () => this.exportJson());
     panel.querySelector("#json-copy").addEventListener("click", () => this.copyJson());
     panel.querySelector("#json-merge").addEventListener("click", () => this.mergeJson());
+    panel.querySelector("#json-snap").addEventListener("click", () => this.takeSnapshot());
     return panel;
   }
 
@@ -583,6 +642,7 @@ export class TwineToolkitOverlay {
       active.blur();
     }
     this.panel.focus({ preventScroll: true });
+    this.maybeCheckForUpdate();
   }
 
   hide() {
@@ -648,7 +708,10 @@ export class TwineToolkitOverlay {
       media: () => this.renderMedia(false),
       saves: () => this.renderSaves(false),
       setup: () => this.renderSetup(""),
-      json: () => this.exportJson(),
+      json: () => {
+        this.exportJson();
+        this.renderSnapshots();
+      },
       console: () => {},
     };
     map[this.activeTab]?.();
@@ -2657,6 +2720,244 @@ export class TwineToolkitOverlay {
     }
   }
 
+  // ── Feedback → GitHub issue ─────────────────────────────────────────────
+
+  showFeedbackDialog() {
+    this.feedbackModal.hidden = false;
+    this.updateFeedbackPreview();
+    this.feedbackModal.querySelector("#fb-desc").focus();
+  }
+
+  hideFeedbackDialog() {
+    this.feedbackModal.hidden = true;
+    this.panel.focus({ preventScroll: true });
+  }
+
+  updateFeedbackPreview() {
+    const preview = this.feedbackModal.querySelector("#fb-preview");
+    const diagOn = this.feedbackModal.querySelector("#fb-diag").checked;
+    const urlOn = this.feedbackModal.querySelector("#fb-url").checked;
+    preview.textContent = diagOn
+      ? this.buildFeedbackDiagnostics(urlOn)
+      : "(no diagnostics will be included)";
+  }
+
+  buildFeedbackDiagnostics(includeUrl) {
+    const runtime = getRuntime();
+    let version = "?";
+    try {
+      version = runtime?.runtime?.getManifest?.().version || "?";
+    } catch { /* harness or restricted context */ }
+    const lines = [
+      `Twine Peeks: ${version}`,
+      `Browser: ${navigator.userAgent}`,
+      `Engine: ${this.engine?.profile?.label || "not detected"}`,
+      `Panel badge: ${this.badgeEl?.textContent || "—"}`,
+    ];
+    if (this.chatSystemDetected) lines.push("CHATSYSTEM: detected");
+    if (includeUrl) lines.push(`Page: ${location.href}`);
+    return lines.join("\n");
+  }
+
+  openFeedbackIssue() {
+    const desc = this.feedbackModal.querySelector("#fb-desc").value.trim();
+    if (!desc) {
+      alert("Please describe the problem or idea first.");
+      return;
+    }
+    const kind = this.feedbackModal.querySelector('input[name="fb-kind"]:checked')?.value || "bug";
+    const diagOn = this.feedbackModal.querySelector("#fb-diag").checked;
+    const urlOn = this.feedbackModal.querySelector("#fb-url").checked;
+
+    // Field ids must match .github/ISSUE_TEMPLATE/*.yml — GitHub prefills
+    // issue-form fields from query params named after the field id.
+    const template = kind === "bug" ? "bug_report.yml" : "feature_request.yml";
+    const fieldId = kind === "bug" ? "what-happened" : "idea";
+    const title = (kind === "bug" ? "[Bug] " : "[Idea] ") + desc.replace(/\s+/g, " ").slice(0, 60);
+
+    const params = new URLSearchParams();
+    params.set("template", template);
+    params.set("title", title);
+    params.set(fieldId, desc.slice(0, 2000));
+    if (diagOn) params.set("diagnostics", this.buildFeedbackDiagnostics(urlOn).slice(0, 1500));
+
+    window.open(`https://github.com/${FEEDBACK_REPO}/issues/new?${params.toString()}`, "_blank", "noopener");
+    this.hideFeedbackDialog();
+  }
+
+  // ── Update notice ────────────────────────────────────────────────────────
+
+  maybeCheckForUpdate() {
+    if (this.updateChecked) return;
+    this.updateChecked = true;
+    const runtime = getRuntime();
+    let current = null;
+    try {
+      current = parseVersion(runtime?.runtime?.getManifest?.().version);
+    } catch { /* no manifest access (test harness) — skip the check */ }
+    const storage = runtime?.storage?.local;
+    if (!current || !storage) return;
+
+    const apply = (latestTag) => {
+      const latest = parseVersion(latestTag);
+      if (!latest || !isNewerVersion(latest, current)) return;
+      this.updateEl.textContent = `${latestTag} available`;
+      this.updateEl.hidden = false;
+    };
+
+    storage.get({ [UPDATE_CHECK_KEY]: null }, (res) => {
+      const cached = res?.[UPDATE_CHECK_KEY];
+      if (cached && Date.now() - cached.ts < 24 * 60 * 60 * 1000) {
+        apply(cached.latest);
+        return;
+      }
+      fetch(`https://api.github.com/repos/${FEEDBACK_REPO}/releases/latest`, {
+        headers: { Accept: "application/vnd.github+json" },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          const latest = (data && data.tag_name) || null;
+          storage.set({ [UPDATE_CHECK_KEY]: { ts: Date.now(), latest } }, () => {});
+          apply(latest);
+        })
+        .catch(() => { /* offline or rate-limited — try again next day */ });
+    });
+  }
+
+  // ── Quick state snapshots (JSON tab) ────────────────────────────────────
+
+  snapshotStoryKey() {
+    return `${location.host}${location.pathname}`;
+  }
+
+  loadSnapshotStore() {
+    return new Promise((resolve) => {
+      const storage = getRuntime()?.storage?.local;
+      if (!storage) return resolve({});
+      storage.get({ [SNAPSHOTS_KEY]: {} }, (res) => resolve(res?.[SNAPSHOTS_KEY] || {}));
+    });
+  }
+
+  saveSnapshotStore(store) {
+    return new Promise((resolve, reject) => {
+      const runtime = getRuntime();
+      const storage = runtime?.storage?.local;
+      if (!storage) return reject(new Error("Extension storage unavailable"));
+      storage.set({ [SNAPSHOTS_KEY]: store }, () => {
+        const err = runtime.runtime?.lastError;
+        if (err) reject(new Error(err.message || "Storage error (quota?)"));
+        else resolve();
+      });
+    });
+  }
+
+  async takeSnapshot() {
+    try {
+      const json = await callPage("exportVariablesJson");
+      if (!json || json === "{}") {
+        alert("No variables to snapshot yet — start or load a game first.");
+        return;
+      }
+      if (json.length > MAX_SNAPSHOT_BYTES) {
+        alert(`This game's state is too large to snapshot (${Math.round(json.length / 1024)} KB > ${MAX_SNAPSHOT_BYTES / 1000} KB). Use Export / Copy instead.`);
+        return;
+      }
+      let meta = null;
+      try { meta = await callPage("getMeta"); } catch { /* fine without */ }
+      const defName = `${meta?.passage || "state"} — ${new Date().toLocaleString()}`;
+      const name = prompt("Snapshot name:", defName);
+      if (name === null) return;
+
+      const store = await this.loadSnapshotStore();
+      const key = this.snapshotStoryKey();
+      const list = store[key] || [];
+      list.unshift({ name: name.trim() || defName, ts: Date.now(), passage: meta?.passage || "", json });
+      const dropped = list.length > MAX_SNAPSHOTS_PER_STORY;
+      if (dropped) list.length = MAX_SNAPSHOTS_PER_STORY;
+      store[key] = list;
+      await this.saveSnapshotStore(store);
+      await this.renderSnapshots();
+      if (dropped) alert(`Oldest snapshot dropped — ${MAX_SNAPSHOTS_PER_STORY} are kept per story. Use “Save .json” to keep older ones as files.`);
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  }
+
+  async renderSnapshots() {
+    const box = this.tabPanels.json?.querySelector("#json-snaps");
+    if (!box) return;
+    const store = await this.loadSnapshotStore();
+    const list = store[this.snapshotStoryKey()] || [];
+    if (!list.length) {
+      box.innerHTML = "";
+      return;
+    }
+    box.innerHTML = list
+      .map(
+        (s, i) => `
+        <div class="snap-row">
+          <span class="snap-name" title="${escAttr(s.name)}">${esc(s.name)}</span>
+          <span class="hint">${s.passage ? esc(s.passage) + " · " : ""}${Math.round(s.json.length / 1024)} KB</span>
+          <button type="button" class="btn btn-xs" data-snap-restore="${i}">Restore</button>
+          <button type="button" class="btn btn-xs" data-snap-dl="${i}">Save .json</button>
+          <button type="button" class="btn btn-xs" data-snap-del="${i}" title="Delete snapshot">×</button>
+        </div>`
+      )
+      .join("");
+    box.querySelectorAll("[data-snap-restore]").forEach((btn) => {
+      btn.addEventListener("click", () => this.restoreSnapshot(Number(btn.dataset.snapRestore)));
+    });
+    box.querySelectorAll("[data-snap-dl]").forEach((btn) => {
+      btn.addEventListener("click", () => this.downloadSnapshot(Number(btn.dataset.snapDl)));
+    });
+    box.querySelectorAll("[data-snap-del]").forEach((btn) => {
+      btn.addEventListener("click", () => this.deleteSnapshot(Number(btn.dataset.snapDel)));
+    });
+  }
+
+  async restoreSnapshot(index) {
+    const store = await this.loadSnapshotStore();
+    const snap = (store[this.snapshotStoryKey()] || [])[index];
+    if (!snap) return;
+    if (!confirm(`Restore snapshot “${snap.name}”?\n\nValues are merged into the live variables (keys added since the snapshot are kept). Use a test save first.`)) {
+      return;
+    }
+    try {
+      await callPage("mergeVariables", { json: snap.json });
+      await this.exportJson();
+      alert("Snapshot restored (merged). You may need to navigate or refresh the passage for the UI to update.");
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  }
+
+  async downloadSnapshot(index) {
+    const store = await this.loadSnapshotStore();
+    const snap = (store[this.snapshotStoryKey()] || [])[index];
+    if (!snap) return;
+    const safeName = snap.name.replace(/[^\w.-]+/g, "_").slice(0, 60) || "snapshot";
+    const blob = new Blob([snap.json], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `twine-peeks-${safeName}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  async deleteSnapshot(index) {
+    const store = await this.loadSnapshotStore();
+    const key = this.snapshotStoryKey();
+    const list = store[key] || [];
+    const snap = list[index];
+    if (!snap) return;
+    if (!confirm(`Delete snapshot “${snap.name}”?`)) return;
+    list.splice(index, 1);
+    if (list.length) store[key] = list;
+    else delete store[key];
+    await this.saveSnapshotStore(store);
+    await this.renderSnapshots();
+  }
+
   makePanelDraggable(header) {
     let dx = 0;
     let dy = 0;
@@ -2707,6 +3008,18 @@ function el(tag, className) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   return node;
+}
+
+function parseVersion(s) {
+  const m = String(s || "").match(/(\d+)\.(\d+)\.(\d+)/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+function isNewerVersion(a, b) {
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] > b[i];
+  }
+  return false;
 }
 
 function renderStorageTable(title, rows) {

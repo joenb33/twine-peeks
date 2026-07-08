@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.0 — 2026-07-08
+
+- **Feedback from inside the extension** — 💬 button in the panel header opens a prefilled GitHub issue (bug or idea) with opt-in diagnostics; the page URL is never included unless you tick the box. Matching issue forms added to the repo; "report a problem" link in the toolbar popup.
+- **Update notice** — the panel checks the GitHub releases API (at most once per day) and shows a small "vX.Y.Z available" link when a newer version exists. Useful since installs from source don't auto-update.
+- **Quick state snapshots** (JSON tab) — save up to 5 named variable-store snapshots per story inside the extension; restore (merge), download as .json, or delete. Great for A/B-testing branching paths without touching the game's own saves.
+
 ## 1.7.0 — 2026-07-07
 
 **Project renamed to Twine Peeks** (formerly "Twine DevTools"), with a new original logo — earlier private builds used placeholder icons borrowed from TwineHacker (see [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)).

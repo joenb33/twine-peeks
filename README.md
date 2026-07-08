@@ -70,6 +70,14 @@ Plus a separate **F12 DevTools panel** (SugarCube-focused subset) if you prefer 
 
 A heuristic unlock/max tool for learning: preview-first scanning of `State.variables` for flags, stats, meters, and currency with pattern matching. Nothing is applied without an explicit confirmation, and it always recommends a test save.
 
+### Quick state snapshots
+
+Save up to five named variable-store snapshots per story inside the extension (JSON tab), then restore, download, or delete them — perfect for A/B-testing branching paths without touching the game's own save system.
+
+### Built-in feedback & update notice
+
+The 💬 button in the panel header opens a prefilled GitHub issue (bug report or idea) with opt-in diagnostics — the page URL is only included if you tick the box. The panel also checks GitHub releases (once a day at most) and shows a small link when a newer version is available, since installs from source don't auto-update.
+
 ## 📋 Format support
 
 | Format | Variables | Passages | Navigate | Saves | Analysis | Twee export |

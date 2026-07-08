@@ -1,6 +1,6 @@
 {
   "name": "Twine Peeks",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Peek inside any Twine game — inspect, visualize, and edit SugarCube, Harlowe, Chapbook, and Snowman stories while they run.",
   "manifest_version": 3,
   "permissions": ["storage", "scripting", "tabs"],

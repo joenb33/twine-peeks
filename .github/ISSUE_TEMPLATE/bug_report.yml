@@ -1,0 +1,23 @@
+name: 🐛 Bug report
+description: Something broke or didn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: game-info
+    attributes:
+      label: Game / story format
+      description: If the problem happens in a specific game, what game and format?
+      placeholder: e.g. a SugarCube 2.36 game played on itch.io
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Auto-filled when you report from inside the extension. Otherwise, paste the panel badge text (e.g. "SugarCube 2.x · full edit") and your browser version.
+      render: text

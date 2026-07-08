@@ -48,6 +48,99 @@
 .panel-badge { font-size: 11px; color: #4ec9b0; }
 .panel-actions { display: flex; gap: 4px; }
 
+.update-link {
+  border: 1px solid #5a4a1a;
+  border-radius: 999px;
+  color: #e5c07b;
+  font-size: 11px;
+  padding: 1px 8px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.update-link:hover { background: #3a300e; color: #ffd479; }
+
+.feedback-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.feedback-modal[hidden] { display: none; }
+
+.feedback-card {
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  color: #ccc;
+  display: flex;
+  flex-direction: column;
+  font: 13px/1.4 "Segoe UI", system-ui, sans-serif;
+  gap: 8px;
+  padding: 14px 16px;
+  width: min(540px, 92vw);
+}
+
+.feedback-card h3 { font-size: 14px; margin: 0; }
+
+.feedback-kind { display: flex; gap: 16px; }
+
+.feedback-card label {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.feedback-card textarea {
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  color: #ccc;
+  font: inherit;
+  min-height: 90px;
+  padding: 6px 8px;
+  resize: vertical;
+  width: 100%;
+}
+
+#fb-preview {
+  margin: 0;
+  max-height: 110px;
+  overflow: auto;
+}
+
+.snap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 10px 6px;
+}
+
+.snap-row {
+  align-items: center;
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.snap-row .snap-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .icon-btn {
   background: transparent;
   border: 1px solid #555;
