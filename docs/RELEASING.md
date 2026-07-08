@@ -4,15 +4,16 @@
 
 1. Bump `version` in [extension/manifest.json](../extension/manifest.json)
 2. Add an entry to [CHANGELOG.md](../CHANGELOG.md)
-3. Commit, then tag and push:
+3. Commit and push to `main`
+4. Create the release (this also creates the tag):
 
    ```bash
-   git tag v1.8.0
-   git push origin main --tags
+   gh release create v1.9.0 --title "Twine Peeks v1.9.0" --notes "…"
    ```
 
-4. CI packages the `.xpi` and attaches it to the GitHub Release automatically.
-   Add release notes on GitHub (or pre-create the release with `gh release create`).
+5. Publishing the release triggers CI, which builds the `.xpi` and attaches
+   it automatically. Don't push the tag separately first — the release event
+   is the single trigger for asset upload.
 
 ## Firefox signing on AMO (for permanent installs)
 
